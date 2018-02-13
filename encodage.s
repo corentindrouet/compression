@@ -137,7 +137,7 @@ _create_structs:
 ;; Now we will incremente compressed datas offset only if our struct have been updated
 	mov rdi, QWORD [rsp + 32]
 	add rdi, QWORD [rsp + 48]
-	cmp rdi, 0
+	cmp WORD [rdi], 0
 	je _check_file_max_size
     add QWORD [rsp + 48], 4 ; if our current struct have been updated, we go to next struct
 	add QWORD [rsp + 56], 4 ; update our compressed datas size
@@ -245,15 +245,20 @@ _compare:
     mov rsi, rdi ; mov our word addr on rsi
     mov rdi, QWORD [rsp] ; take our word addr
     mov rcx, QWORD [rsp + 24] ; size to compare
-    push rsi ; save our dictionnary word addr
+	push rsi
     cld
     repe cmpsb
-    pop rdi
-    sub rdi, 2
 ;; if the words didn't matched, we reloop on our dictionnary
-    jne _increment_reloop
+    jne _update_dictionnary_addr
 ;; else if our words matched, we update our compressed datas list
+	pop rdi
+	sub rdi, 2
     jmp _update_index_struct
+
+_update_dictionnary_addr:
+	pop rdi
+	sub rdi, 2
+	jmp _increment_reloop
 
 _add_in_dictionnary:
 ;; here we add our word to the dictionnary
