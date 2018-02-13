@@ -130,6 +130,7 @@ _create_structs:
     mov rdx, QWORD [rsp + 32] ; take datas mmap
     add rdi, QWORD [rsp + 40]
     add rdx, QWORD [rsp + 48]
+	mov r10, QWORD [rsp + 32]
     call _find_word
     add QWORD [rsp + 40], rax ; save our word size
 
@@ -189,11 +190,12 @@ _end:
     mov rdi, 0
     syscall
 
-_find_word: ; int _find_word(void *addr_of_word, void *addr_dictionnary, void *addr_of_index_struct)
+_find_word: ; int _find_word(void *addr_of_word, void *addr_dictionnary, void *addr_of_index_struct, mmap_struct addr)
     enter 64, 0 ; allocate 64 bytes on stack
     mov QWORD [rsp], rdi ; word addr
     mov QWORD [rsp + 8], rsi ; dictionnary addr
     mov QWORD [rsp + 16], rdx ; struct index addr
+    mov QWORD [rsp + 32], r10 ; mmap struct addr
 
 ;; First, find a word. A word is delimited by a duplicate byte. So if we have:
 ;; "test"
@@ -279,13 +281,16 @@ _add_in_dictionnary:
 _update_index_struct:
 ;; here we will update our compressed datas with our word
 	mov rsi, rdi
-    mov si, WORD [rsi] ; we take our string size
+    mov si, WORD [rsi - 2] ; we take our string size
     mov rdi, QWORD [rsp + 16] ; now we take our struct addr
 ;; our struct have a multiplicator, so we check if our previous struct is the same of our current struct
+	cmp rdi, QWORD [rsp + 32]
+	jle _create_struct
 	cmp WORD [rdi - 2], si ; we compare dictionnary index of our previous struct with our current struct
 	je _inc_last_index_multiplicator
 
 ;; if previous word struct isn't the same, we set a new struct of compressed datas:
+_create_struct:
     mov WORD [rdi], 1 ; our multiplicator
     mov WORD [rdi + 2], si ; our word struct index in dictionnary
 	jmp _ret_find_word
@@ -311,7 +316,7 @@ _count_dictionnary_size:
 	.init mov QWORD [rsp + 24], 0
 	.loop mov rdi, QWORD [rsp]
 	add rdi, QWORD [rsp + 24]
-	cmp WORD [rdi], 0
+	cmp WORD [rdi + 2], 0
 	je _end_dictionnary
 	add QWORD [rsp + 24], 4
 	xor rsi, rsi
