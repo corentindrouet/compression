@@ -94,7 +94,9 @@ _second_mmap:
 	mov rax, 9
 	mov rdi, 0
 	mov rsi, QWORD [rsp + 8]
-	add rsi, 4096
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
 	mov rdx, 3
 	mov r10, 34
 	mov r8, -1
@@ -109,7 +111,9 @@ _third_mmap:
 	mov rax, 9
 	mov rdi, 0
 	mov rsi, QWORD [rsp + 8]
-	add rsi, 4096
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
 	mov rdx, 3
 	mov r10, 34
 	mov r8, -1
@@ -173,14 +177,18 @@ _munmap_second_mmap:
 	mov rax, 11
 	mov rdi, QWORD [rsp + 24]
 	mov rsi, QWORD [rsp + 8]
-	add rsi, 4096
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
 	syscall
 
 _munmap_third_mmap:
 	mov rax, 11
 	mov rdi, QWORD [rsp + 32]
 	mov rsi, QWORD [rsp + 8]
-	add rsi, 4096
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
+	add rsi, QWORD [rsp + 8]
 	syscall
 
 ;; Finish
@@ -271,6 +279,8 @@ _add_in_dictionnary:
 	xor rsi, rsi
     mov si, WORD [rdi - 2] ; take our current index number
     inc rsi ; incremente it
+    cmp rsi, 0xffff
+    jg _print_exit
     mov WORD [rdi + rax + 2], si ; mov it at the end of our struct, for the next struct.
 
 ;; Here we mov our word on our dictionnary
@@ -386,3 +396,17 @@ _end_write_file:
 ;; And it's done
 	leave
 	ret
+
+_overflow_error:
+    .string db 'Overflow', 10
+    .len equ $ - _overflow_error.string
+
+_print_exit:
+    mov rax, 1
+    mov rdi, 1
+    lea rsi, [rel _overflow_error.string]
+    mov rdx, _overflow_error.len
+    syscall
+    mov rax, 60
+    mov rdi, 1
+    syscall
