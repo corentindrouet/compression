@@ -23,5 +23,6 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size);
 void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int fd);
 int     file_size(int fd);
 void    tri(int *tab, int tab_size, int *index);
+void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd);
 
 #endif

@@ -42,13 +42,13 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
                 element_created = false;
                 next_overflow_value = NULL;
                 while (tmp_branch_match < (t_binary_tree*)(binary_tree_addr + addr_offset) && !element_created) {
-                    if (tmp_branch_match != tmp_branch && !tmp_branch_match->parent && tmp_branch_match->value <= tmp_branch->value) {
+                    if (tmp_branch_match != tmp_branch && tmp_branch_match->value && !tmp_branch_match->parent && tmp_branch_match->value <= tmp_branch->value) {
                         create_element_at_addr(tmp_branch_match->value + tmp_branch->value, 0, (t_binary_tree*)(binary_tree_addr + addr_offset), tmp_branch_match, tmp_branch);
                         tmp_branch_match->parent = (t_binary_tree*)(binary_tree_addr + addr_offset);
                         tmp_branch->parent = (t_binary_tree*)(binary_tree_addr + addr_offset);
                         addr_offset += sizeof_t_binary_tree;
                         element_created = true;
-                    } else if (!tmp_branch_match->parent && tmp_branch_match->value > tmp_branch->value) {
+                    } else if (tmp_branch_match->value && !tmp_branch_match->parent && tmp_branch_match->value > tmp_branch->value) {
                         if (!next_overflow_value || (next_overflow_value->value > tmp_branch_match->value))
                             next_overflow_value = tmp_branch_match;
                     }
@@ -66,7 +66,6 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
         }
         i++;
     }
-    printf("last_offset: %d\n", addr_offset);
     return (binary_tree_addr);
 }
 
@@ -76,12 +75,13 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
     int             decal;
     t_binary_tree   *tmp_tree;
 
-    i = 0;
+    i = size - 1;
     decal = 0;
     packed_char = 0;
-    while (i < size) {
+	write(fd, &size, 4);
+    while (i >= 0) {
         tmp_tree = tree;
-        while (tmp_tree->character != *(char*)(mmap_addr + i))
+        while (tmp_tree->character != *(unsigned char*)(mmap_addr + i))
             tmp_tree++;
         while (tmp_tree->parent) {
             if (decal == 8) {
@@ -94,6 +94,9 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
             packed_char += (tmp_tree->parent->left == tmp_tree) ? 0 : 1;
             tmp_tree = tmp_tree->parent;
         }
-        i++;
+        i--;
     }
+	write(fd, &packed_char, 1);
+	packed_char = 8 - decal;
+	write(fd, &packed_char, 1);
 }
