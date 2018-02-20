@@ -10,6 +10,22 @@ void    create_element_at_addr(int value, unsigned char character, t_binary_tree
     sheet->parent = NULL;
 }
 
+void 	check_nb_no_parent(t_binary_tree *tree, int addr_offset) {
+	t_binary_tree 	*end;
+	int 	nb_parent;
+
+	nb_parent = 0;
+	end = tree + (addr_offset / sizeof(t_binary_tree));
+	while (tree < end) {
+		if (!(tree->parent) && tree->value) {
+			nb_parent++;
+		}
+		tree++;
+	}
+	printf("%d\n", nb_parent);
+	return ;
+}
+
 void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
     int     i;
     int     tmp_i;
@@ -20,6 +36,7 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
     t_binary_tree    *tmp_branch_match;
     t_binary_tree    *next_overflow_value;
     char    element_created;
+	int max_value;
 
     sizeof_t_binary_tree = sizeof(t_binary_tree);
     binary_tree_addr = malloc((sizeof_t_binary_tree * buff_size) * 2);
@@ -32,8 +49,14 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
         i++;
         addr_offset += sizeof_t_binary_tree;
     }
+	i = 0;
+	max_value = 0;
+	while (i < buff_size) {
+		max_value += buff[i];
+		i++;
+	}
     i = 1;
-    while (i <= buff[buff_size - 1]) {
+    while (i <= max_value) {
         tmp_i = 0;
         while (tmp_i < addr_offset) {
             tmp_branch = (t_binary_tree*)(binary_tree_addr + tmp_i);
@@ -42,7 +65,7 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
                 element_created = false;
                 next_overflow_value = NULL;
                 while (tmp_branch_match < (t_binary_tree*)(binary_tree_addr + addr_offset) && !element_created) {
-                    if (tmp_branch_match != tmp_branch && tmp_branch_match->value && !tmp_branch_match->parent && tmp_branch_match->value <= tmp_branch->value) {
+                    if ((tmp_branch_match != tmp_branch) && tmp_branch_match->value && !tmp_branch_match->parent && (tmp_branch_match->value <= tmp_branch->value)) {
                         create_element_at_addr(tmp_branch_match->value + tmp_branch->value, 0, (t_binary_tree*)(binary_tree_addr + addr_offset), tmp_branch_match, tmp_branch);
                         tmp_branch_match->parent = (t_binary_tree*)(binary_tree_addr + addr_offset);
                         tmp_branch->parent = (t_binary_tree*)(binary_tree_addr + addr_offset);
@@ -66,6 +89,8 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
         }
         i++;
     }
+	printf("addr_offset %d\n", addr_offset);
+	check_nb_no_parent(binary_tree_addr, addr_offset);
     return (binary_tree_addr);
 }
 
@@ -81,6 +106,7 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
 	write(fd, &size, 4);
     while (i >= 0) {
         tmp_tree = tree;
+//		printf("%d\n", *(unsigned char*)(mmap_addr + i));
         while (tmp_tree->character != *(unsigned char*)(mmap_addr + i))
             tmp_tree++;
         while (tmp_tree->parent) {
@@ -94,6 +120,7 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
             packed_char += (tmp_tree->parent->left == tmp_tree) ? 0 : 1;
             tmp_tree = tmp_tree->parent;
         }
+//		printf("%p\n", tmp_tree);
         i--;
     }
 	write(fd, &packed_char, 1);
