@@ -63,12 +63,15 @@ void *create_binary_tree(char *mmap_addr, int size) {
         i++;
     }
     tri(buff, 256, index);
-	i = 0;
-    while (i < 256) {
-		if (buff[i])
-        	buff[i] = (int)((double)((double)(buff[i] * 100) / size) * 10) + 1;
-        i++;
-    }
+//	i = 0;
+//    while (i < 256) {
+//		if (buff[i]) {
+//			printf("buff[%d]: %f%% ", i, (double)((double)(buff[i] * 100) / size));
+//			buff[i] = (int)round((double)((double)(buff[i] * 100) / size) * 100) + 1;
+//			printf("- %d\n", buff[i]);
+//		}
+//        i++;
+//    }
     tree = convert_buff_to_binary_tree(buff, index, 256);
 	return (tree);
 }
@@ -81,10 +84,12 @@ void pack(char *file_to_pack, char *destination) {
     void *bin_tree;
 
     fd = open(file_to_pack, O_RDWR);
+	printf("Opening %s . . .\n", file_to_pack);
     if (fd == -1) {
 		printf("Can't open %s\n", file_to_pack);
         return ;
 	}
+	printf("Opening %s . . .\n", destination);
     fd_pack = open(destination, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
     if (fd_pack == -1) {
 		printf("Can't open %s\n", destination);
@@ -93,6 +98,7 @@ void pack(char *file_to_pack, char *destination) {
     size = file_size(fd);
     mmap_addr = mmap(0, size, 3, 2, fd, 0);
 // WAS HERE
+	printf("Creating binary tree:\n");
 	bin_tree = create_binary_tree(mmap_addr, size);
     write_compressed_datas_on_fd(bin_tree, mmap_addr, size, fd_pack);
     free(bin_tree);

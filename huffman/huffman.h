@@ -5,7 +5,9 @@
 # include <fcntl.h>
 # include <unistd.h>
 # include <strings.h>
+# include <string.h>
 # include <stdlib.h>
+# include <math.h>
 
 # define false 0
 # define true 1
