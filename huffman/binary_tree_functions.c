@@ -38,9 +38,10 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
 	int max_value;
 	int offset;
 	char progress[11];
+	int pourcent;
 
     sizeof_t_binary_tree = sizeof(t_binary_tree);
-    binary_tree_addr = malloc((sizeof_t_binary_tree * buff_size) * 2);
+    binary_tree_addr = mmap(0, (sizeof_t_binary_tree * buff_size) * 2, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);//malloc((sizeof_t_binary_tree * buff_size) * 2);
     if (!binary_tree_addr)
         return (NULL);
     i = 0;
@@ -50,14 +51,16 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
 	memset(progress, ' ', 10);
 	printf("\tCreating base sheet: [%s]\r", progress);
 	fflush(stdout);
+	pourcent = (int)((long)((long)buff_size * (long)(offset * 10)) / 100);
     while (i < buff_size) {
-		if (i > ((buff_size * (offset * 10)) / 100)) {
+		if (i > pourcent) {
 			progress[offset - 1] = '=';
 			printf("\tCreating base sheet: [%s]\r", progress);
 			fflush(stdout);
 			offset++;
+			pourcent = (int)((long)((long)buff_size * (long)(offset * 10)) / 100);
 		}
-        create_element_at_addr(buff[i], index[i], (t_binary_tree*)(binary_tree_addr + addr_offset), NULL, NULL);
+		create_element_at_addr(buff[i], index[i], (t_binary_tree*)(binary_tree_addr + addr_offset), NULL, NULL);
         i++;
         addr_offset += sizeof_t_binary_tree;
 	}
@@ -77,14 +80,16 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
 	printf("\tCreating branchs: [%s]\r", progress);
 	fflush(stdout);
 	offset = 1;
+	pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
 	while (tmp_branch->value != max_value) {
-		if (tmp_branch->value > ((max_value * (offset * 10)) / 100)) {
+		if (tmp_branch->value > pourcent) {
 			progress[offset - 1] = '=';
-			printf("\tCreating base sheet: [%s]\r", progress);
+			printf("\tCreating branchs: [%s]\r", progress);
 			fflush(stdout);
 			offset++;
+			pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
 		}
-		if (tmp_branch->parent) {
+		if (!tmp_branch->value || tmp_branch->parent) {
 			tmp_branch++;
 			continue;
 		}
@@ -120,10 +125,10 @@ void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size) {
 	}
 	memset(progress, '=', 10);
 //	progress[offset - 1] = '=';
-	printf("\tCreating base sheet: [%s]\n", progress);
+	printf("\tCreating branchs: [%s]\n", progress);
 	fflush(stdout);
 	printf("\tTree size: %d\n", addr_offset);
-	check_nb_no_parent(binary_tree_addr, addr_offset);
+//	check_nb_no_parent(binary_tree_addr, addr_offset);
     return (binary_tree_addr);
 }
 
@@ -134,44 +139,81 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
     t_binary_tree   *tmp_tree;
 	char 			progress[11];
 	int 			offset;
+	int pourcent;
+	char *mmap_tmp;
+	void *mmap_start;
 
+	mmap_tmp = mmap(0, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	mmap_start = mmap_tmp;
 	progress[10] = 0;
 	memset(progress, ' ', 10);
     i = size - 1;
     decal = 0;
     packed_char = 0;
 	write(fd, &size, 4);
-	printf("Writing on file: [%s]\r", progress);
+	write_tree_base_on_file(tree, fd);
+	printf("\tCompress datas: [%s]\r", progress);
 	fflush(stdout);
 	offset = 0;
+	pourcent = (int)((long)((long)size * (long)((10 - offset) * 10)) / 100);
     while (i >= 0) {
-		if (i < ((size * ((10 - offset) * 10)) / 100)) {
+		if (i < pourcent) {
 			progress[offset - 1] = '=';
-			printf("Writing on file: [%s]\r", progress);
+			printf("\tCompress datas: [%s] %d/%d\r", progress, size - i, size);
 			fflush(stdout);
 			offset++;
+			pourcent = (int)((long)((long)size * (long)((10 - offset) * 10)) / 100);
 		}
         tmp_tree = tree;
-//		printf("%d\n", *(unsigned char*)(mmap_addr + i));
         while (tmp_tree->character != *(unsigned char*)(mmap_addr + i))
             tmp_tree++;
         while (tmp_tree->parent) {
             if (decal == 8) {
-                write(fd, &packed_char, 1);
+				mmap_tmp++;
                 decal = 0;
-                packed_char = 0;
             }
-            packed_char = packed_char << 1;
+			*mmap_tmp = *mmap_tmp << 1;
             decal++;
-            packed_char += (tmp_tree->parent->left == tmp_tree) ? 0 : 1;
+			*mmap_tmp += (tmp_tree->parent->left == tmp_tree) ? 0 : 1;
             tmp_tree = tmp_tree->parent;
         }
-//		printf("%p\n", tmp_tree);
         i--;
     }
-	write(fd, &packed_char, 1);
+	progress[offset - 1] = '=';
+	printf("\tCompress datas: [%s] %d/%d\n", progress, size, size);
+	fflush(stdout);
+	printf("\tWrite compressed datas on file: ..\r");
+	fflush(stdout);
+	write(fd, mmap_start, (void*)mmap_tmp - mmap_start + 1);
+	munmap(mmap_start, size);
 	packed_char = 8 - decal;
 	write(fd, &packed_char, 1);
-	progress[offset - 1] = '=';
-	printf("Writing on file: [%s]\n", progress);
+	printf("\tWrite compressed datas on file: ok\n");
+}
+
+void write_tree_base_on_file(t_binary_tree *tree, int fd) {
+	int i;
+	void *mmap_addr;
+	short nb_sheet_writed;
+	int offset;
+
+	mmap_addr = mmap(0, 5*256, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+	i = 0;
+	nb_sheet_writed = 0;
+	offset = 0;
+	while (i < 256) {
+		if (tree->value) {
+			*(int*)(mmap_addr + offset) = tree->value;
+			*(unsigned char*)(mmap_addr + offset + 4) = tree->character;
+			offset += 5;
+			nb_sheet_writed++;
+		}
+		tree++;
+		i++;
+	}
+	printf("%hd\n", nb_sheet_writed);
+	write(fd, &nb_sheet_writed, 2);
+	write(fd, mmap_addr, nb_sheet_writed * 5);
+	munmap(mmap_addr, 5*256);
+	return ;
 }

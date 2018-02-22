@@ -26,5 +26,7 @@ void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int 
 int     file_size(int fd);
 void    tri(int *tab, int tab_size, int *index);
 void 	decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd);
+void 	write_tree_base_on_file(t_binary_tree *tree, int fd);
+void 	*recover_binary_tree(void *base);
 
 #endif

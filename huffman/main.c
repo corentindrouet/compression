@@ -48,30 +48,40 @@ void *create_binary_tree(char *mmap_addr, int size) {
     int index[256];
     int buff[256];
 	int i;
+	char progress[11];
+	int offset;
+	int pourcent;
 
     if (!mmap_addr)
         return (0);
     i = 0;
     bzero(buff, sizeof(int) * 256);
+	memset(progress, ' ', 10);
+	progress[10] = 0;
+	printf("\tCounting Bytes recurrence: [%s]\r", progress);
+	fflush(stdout);
+	offset = 1;
+	pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
     while (i < size) {
+		if (i > pourcent) {
+			progress[offset - 1] = '=';
+			printf("\tCounting Bytes recurrence: [%s] %d/%d\r", progress, i, size);
+			fflush(stdout);
+			offset++;
+			pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
+		}
         buff[(unsigned char)mmap_addr[i]]++;
         i++;
-    }
+	}
+	progress[offset - 1] = '=';
+	printf("\tCounting Bytes recurrence: [%s] %d/%d\n", progress, i, size);
+	fflush(stdout);
     i = 0;
     while (i < 256) {
         index[i] = i;
         i++;
     }
     tri(buff, 256, index);
-//	i = 0;
-//    while (i < 256) {
-//		if (buff[i]) {
-//			printf("buff[%d]: %f%% ", i, (double)((double)(buff[i] * 100) / size));
-//			buff[i] = (int)round((double)((double)(buff[i] * 100) / size) * 100) + 1;
-//			printf("- %d\n", buff[i]);
-//		}
-//        i++;
-//    }
     tree = convert_buff_to_binary_tree(buff, index, 256);
 	return (tree);
 }
@@ -83,7 +93,7 @@ void pack(char *file_to_pack, char *destination) {
     char *mmap_addr;
     void *bin_tree;
 
-    fd = open(file_to_pack, O_RDWR);
+    fd = open(file_to_pack, O_RDONLY);
 	printf("Opening %s . . .\n", file_to_pack);
     if (fd == -1) {
 		printf("Can't open %s\n", file_to_pack);
@@ -96,66 +106,84 @@ void pack(char *file_to_pack, char *destination) {
         return ;
 	}
     size = file_size(fd);
-    mmap_addr = mmap(0, size, 3, 2, fd, 0);
+    mmap_addr = mmap(0, size, PROT_READ, 2, fd, 0);
 // WAS HERE
 	printf("Creating binary tree:\n");
 	bin_tree = create_binary_tree(mmap_addr, size);
+	printf("Compress and Write datas:\n");
     write_compressed_datas_on_fd(bin_tree, mmap_addr, size, fd_pack);
-    free(bin_tree);
+	munmap(bin_tree, (sizeof(t_binary_tree) * 256) * 2);
+//    free(bin_tree);
     munmap(mmap_addr, size);
     close(fd);
     close(fd_pack);
+	printf("Datas successfully compressed !\n");
     return ;
 }
 
 void unpack(char *file_name, char *compressed_file, char *new_file) {
-	int fd_base;
+//	int fd_base;
 	int fd_packed;
 	int fd_unpacked;
     int size;
     char *mmap_addr;
     void *bin_tree;
 
-    fd_base = open(file_name, O_RDWR);
+	(void)file_name;
+/*    fd_base = open(file_name, O_RDONLY);
+	printf("Opening %s . . .\n", file_name);
     if (fd_base == -1) {
 		printf("Can't open %s\n", file_name);
         return ;
-	}
-    fd_packed = open(compressed_file, O_RDWR);
+	}*/
+    fd_packed = open(compressed_file, O_RDONLY);
+	printf("Opening %s . . .\n", compressed_file);
     if (fd_packed == -1) {
 		printf("Can't open %s\n", compressed_file);
         return ;
 	}
     fd_unpacked = open(new_file, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
+	printf("Opening %s . . .\n", new_file);
     if (fd_unpacked == -1) {
 		printf("Can't open %s\n", new_file);
         return ;
 	}
-    size = file_size(fd_base);
-    mmap_addr = mmap(0, size, 3, 2, fd_base, 0);
+//    size = file_size(fd_base);
+//    mmap_addr = mmap(0, size, PROT_READ, 2, fd_base, 0);
 // WAS HERE
-	bin_tree = create_binary_tree(mmap_addr, size);
-    munmap(mmap_addr, size);
-    close(fd_base);
+	printf("Creating binary tree:\n");
+//	bin_tree = recover_binary_tree(mmap_addr)//create_binary_tree(mmap_addr, size);
+//    munmap(mmap_addr, size);
+//    close(fd_base);
 	size = file_size(fd_packed);
 	mmap_addr = mmap(0, size, 3, 2, fd_packed, 0);
+	bin_tree = recover_binary_tree(mmap_addr + 4);
+	printf("Decompress and write datas:\n");
 	decrypt(bin_tree, mmap_addr, size, fd_unpacked);
     munmap(mmap_addr, size);
 //    write_compressed_datas_on_fd(bin_tree, mmap_addr, size, fd_pack);
-    free(bin_tree);
+	munmap(bin_tree, (sizeof(t_binary_tree) * 256) * 2);
+    //free(bin_tree);
     close(fd_packed);
     close(fd_unpacked);
+	printf("Datas successfully decompressed !\n");
     return ;
 }
 
 int main(int argc, char **argv) {
-    if (argc == 3) {
-		pack(argv[1], argv[2]);
-        return (0);
-	} else if (argc == 4) {
-		unpack(argv[1], argv[2], argv[3]);
-	} else {
-		printf("Not enough arguments");
+    if (argc == 4) {
+		if (!strcmp(argv[1], "pack")) {
+			pack(argv[2], argv[3]);
+			return (0);
+		}
+		else if (!strcmp(argv[1], "unpack")) {
+			unpack(argv[2], argv[2], argv[3]);
+			return (0);
+		}
 	}
+	printf("Invalids arguments\n");
+	printf("Usage:");
+	printf("\tCompression: %s pack <file_to_compress> <compressed_file_path>\n", argv[0]);
+	printf("\tDecompression: %s unpack <compressed_file_path> <decompressed_file_path>\n", argv[0]);
 	return (0);
 }

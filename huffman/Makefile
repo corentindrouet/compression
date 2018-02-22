@@ -1,6 +1,6 @@
 EXEC		=	huffman
 CC			=	clang
-CFLAGS		=	-Wall -Wextra -Werror
+CFLAGS		=	-Wall -Wextra -Werror -Ofast
 SRC			=	main.c \
 				binary_tree_functions.c \
 				unpack.c
