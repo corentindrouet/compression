@@ -48,34 +48,42 @@ void *create_binary_tree(char *mmap_addr, int size) {
     int index[256];
     int buff[256];
 	int i;
-	char progress[11];
-	int offset;
-	int pourcent;
+//	char progress[11];
+//	int offset;
+//	int pourcent;
 
     if (!mmap_addr)
         return (0);
     i = 0;
     bzero(buff, sizeof(int) * 256);
-	memset(progress, ' ', 10);
-	progress[10] = 0;
-	printf("\tCounting Bytes recurrence: [%s]\r", progress);
-	fflush(stdout);
-	offset = 1;
-	pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
+//	memset(progress, ' ', 10);
+//	progress[10] = 0;
+//	printf("\tCounting Bytes recurrence: [%s]\r", progress);
+//	fflush(stdout);
+//	offset = 1;
+//	pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
+	pthread_mutex_lock(&mutex);
+	options.actual.size = &size;
+	options.actual.i = &i;
+	options.recurrence = 1;
+	pthread_mutex_unlock(&mutex);
     while (i < size) {
-		if (i > pourcent) {
+/*		if (pourcent < i) {
 			progress[offset - 1] = '=';
 			printf("\tCounting Bytes recurrence: [%s] %d/%d\r", progress, i, size);
 			fflush(stdout);
 			offset++;
 			pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
-		}
+		}*/
         buff[(unsigned char)mmap_addr[i]]++;
         i++;
 	}
-	progress[offset - 1] = '=';
-	printf("\tCounting Bytes recurrence: [%s] %d/%d\n", progress, i, size);
-	fflush(stdout);
+	pthread_mutex_lock(&mutex);
+	options.recurrence = 2;
+	pthread_mutex_unlock(&mutex);
+//	progress[offset - 1] = '=';
+//	printf("\tCounting Bytes recurrence: [%s] %d/%d\n", progress, i, size);
+//	fflush(stdout);
     i = 0;
     while (i < 256) {
         index[i] = i;
@@ -108,16 +116,16 @@ void pack(char *file_to_pack, char *destination) {
     size = file_size(fd);
     mmap_addr = mmap(0, size, PROT_READ, 2, fd, 0);
 // WAS HERE
-	printf("Creating binary tree:\n");
+//	printf("Creating binary tree:\n");
 	bin_tree = create_binary_tree(mmap_addr, size);
-	printf("Compress and Write datas:\n");
+//	printf("Compress and Write datas:\n");
     write_compressed_datas_on_fd(bin_tree, mmap_addr, size, fd_pack);
 	munmap(bin_tree, (sizeof(t_binary_tree) * 256) * 2);
 //    free(bin_tree);
     munmap(mmap_addr, size);
     close(fd);
     close(fd_pack);
-	printf("Datas successfully compressed !\n");
+//	printf("Datas successfully compressed !\n");
     return ;
 }
 
@@ -151,14 +159,14 @@ void unpack(char *file_name, char *compressed_file, char *new_file) {
 //    size = file_size(fd_base);
 //    mmap_addr = mmap(0, size, PROT_READ, 2, fd_base, 0);
 // WAS HERE
-	printf("Creating binary tree:\n");
+//	printf("Creating binary tree:\n");
 //	bin_tree = recover_binary_tree(mmap_addr)//create_binary_tree(mmap_addr, size);
 //    munmap(mmap_addr, size);
 //    close(fd_base);
 	size = file_size(fd_packed);
 	mmap_addr = mmap(0, size, 3, 2, fd_packed, 0);
 	bin_tree = recover_binary_tree(mmap_addr + 4);
-	printf("Decompress and write datas:\n");
+//	printf("Decompress and write datas:\n");
 	decrypt(bin_tree, mmap_addr, size, fd_unpacked);
     munmap(mmap_addr, size);
 //    write_compressed_datas_on_fd(bin_tree, mmap_addr, size, fd_pack);
@@ -166,18 +174,39 @@ void unpack(char *file_name, char *compressed_file, char *new_file) {
     //free(bin_tree);
     close(fd_packed);
     close(fd_unpacked);
-	printf("Datas successfully decompressed !\n");
+//	printf("Datas successfully decompressed !\n");
     return ;
 }
 
+void init_opts(int p_o_up) {
+	pthread_mutex_init(&mutex, NULL);
+	options.pack_or_unpack = p_o_up;
+	options.recurrence = 0;
+	options.base_sheet = 0;
+	options.branchs = 0;
+	options.compress_datas = 0;
+	options.write_datas = 0;
+	options.actual.size = 0;
+	options.actual.i = 0;
+}
+
 int main(int argc, char **argv) {
+	pthread_t thread;
+
     if (argc == 4) {
 		if (!strcmp(argv[1], "pack")) {
+			init_opts(1);
+//			printf("%p\n", &(options.recurrence));
+			pthread_create(&thread, NULL, thread_print, (void*)&options);
 			pack(argv[2], argv[3]);
+			pthread_join(thread, NULL);
 			return (0);
 		}
 		else if (!strcmp(argv[1], "unpack")) {
+			init_opts(0);
+			pthread_create(&thread, NULL, thread_print, (void*)&options);
 			unpack(argv[2], argv[2], argv[3]);
+			pthread_join(thread, NULL);
 			return (0);
 		}
 	}

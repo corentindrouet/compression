@@ -10,36 +10,42 @@ void 	*recover_binary_tree(void *base) {
     t_binary_tree    *next_overflow_value;
     char    element_created;
 	int max_value;
-	int offset;
-	char progress[11];
-	int pourcent;
+//	int offset;
+//	char progress[11];
+//	int pourcent;
 	short nb_branchs;
+	int total;
 
     sizeof_t_binary_tree = sizeof(t_binary_tree);
     binary_tree_addr = mmap(0, (sizeof_t_binary_tree * 256) * 2, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);//malloc((sizeof_t_binary_tree * buff_size) * 2);
     if (!binary_tree_addr)
         return (NULL);
     i = 0;
+	total = 256;
     addr_offset = 0;
-	offset = 1;
-	progress[10] = 0;
-	memset(progress, ' ', 10);
-	printf("\tCreating base sheet: [%s]\r", progress);
-	fflush(stdout);
-	pourcent = (int)((long)((long)256 * (long)(offset * 10)) / 100);
+	pthread_mutex_lock(&mutex);
+	options.actual.size = &total;
+	options.actual.i = &i;
+	options.base_sheet = 1;
+	pthread_mutex_unlock(&mutex);
+//	offset = 1;
+//	progress[10] = 0;
+//	memset(progress, ' ', 10);
+//	printf("\tCreating base sheet: [%s]\r", progress);
+//	fflush(stdout);
+//	pourcent = (int)((long)((long)256 * (long)(offset * 10)) / 100);
 	max_value = 0;
 	nb_branchs = *(short*)base;
-	printf("%d\n", nb_branchs);
 	base += 2;
-    while (i < 256) {
-		if (i > pourcent) {
-			progress[offset - 1] = '=';
-			printf("\tCreating base sheet: [%s]\r", progress);
-			fflush(stdout);
-			offset++;
-			pourcent = (int)((long)((long)256 * (long)(offset * 10)) / 100);
-		}
-		if (i < (256 - nb_branchs)) {
+    while (i < total) {
+//		if (i > pourcent) {
+//			progress[offset - 1] = '=';
+//			printf("\tCreating base sheet: [%s]\r", progress);
+//			fflush(stdout);
+//			offset++;
+//			pourcent = (int)((long)((long)256 * (long)(offset * 10)) / 100);
+//		}
+		if (i < (total - nb_branchs)) {
 			create_element_at_addr(0, 0, (t_binary_tree*)(binary_tree_addr + addr_offset), NULL, NULL);
 		} else {
 			create_element_at_addr(*(int*)base, *(unsigned char*)(base + 4), (t_binary_tree*)(binary_tree_addr + addr_offset), NULL, NULL);
@@ -49,27 +55,36 @@ void 	*recover_binary_tree(void *base) {
         i++;
         addr_offset += sizeof_t_binary_tree;
 	}
-	progress[offset - 1] = '=';
-	printf("\tCreating base sheet: [%s]\n", progress);
-	fflush(stdout);
+	pthread_mutex_lock(&mutex);
+	options.base_sheet = 2;
+	pthread_mutex_unlock(&mutex);
+//	progress[offset - 1] = '=';
+//	printf("\tCreating base sheet: [%s]\n", progress);
+//	fflush(stdout);
 	tmp_branch = (t_binary_tree*)(binary_tree_addr);
-	memset(progress, ' ', 10);
-	printf("\tCreating branchs: [%s]\r", progress);
-	fflush(stdout);
-	offset = 1;
-	pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
+	pthread_mutex_lock(&mutex);
+	options.actual.size = &max_value;
+	options.actual.i = &(tmp_branch->value);
+	options.branchs = 1;
+	pthread_mutex_unlock(&mutex);
+//	memset(progress, ' ', 10);
+//	printf("\tCreating branchs: [%s]\r", progress);
+//	fflush(stdout);
+//	offset = 1;
+//	pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
 	while (tmp_branch->value != max_value) {
-		if (tmp_branch->value > pourcent) {
-			progress[offset - 1] = '=';
-			printf("\tCreating branchs: [%s]\r", progress);
-			fflush(stdout);
-			offset++;
-			pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
-		}
+//		if (tmp_branch->value > pourcent) {
+//			progress[offset - 1] = '=';
+//			printf("\tCreating branchs: [%s]\r", progress);
+//			fflush(stdout);
+//			offset++;
+//			pourcent = (int)((long)((long)max_value * (long)(offset * 10)) / 100);
+//		}
 		if (!tmp_branch->value || tmp_branch->parent) {
 			tmp_branch++;
 			continue;
 		}
+		options.actual.i = &(tmp_branch->value);
 		element_created = false;
 		next_overflow_value = NULL;
 		tmp_branch_match = binary_tree_addr;
@@ -100,11 +115,14 @@ void 	*recover_binary_tree(void *base) {
 			next_overflow_value++;
 		}
 	}
-	memset(progress, '=', 10);
+	pthread_mutex_lock(&mutex);
+	options.branchs = 2;
+	pthread_mutex_unlock(&mutex);
+//	memset(progress, '=', 10);
 //	progress[offset - 1] = '=';
-	printf("\tCreating branchs: [%s]\n", progress);
-	fflush(stdout);
-	printf("\tTree size: %d\n", addr_offset);
+//	printf("\tCreating branchs: [%s]\n", progress);
+//	fflush(stdout);
+//	printf("\tTree size: %d\n", addr_offset);
 //	check_nb_no_parent(binary_tree_addr, addr_offset);
     return (binary_tree_addr);
 }
@@ -117,9 +135,9 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	char next;
 	int nb_byte_writed;
 	t_binary_tree	*tmp_tree;
-	int offset;
-	char progress[11];
-	int pourcent;
+//	int offset;
+//	char progress[11];
+//	int pourcent;
 	char *mmap_tmp;
 	void *mmap_start;
 
@@ -127,8 +145,8 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	mmap_tmp = mmap(0, final_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	mmap_start = mmap_tmp;
 	i = 0;
-	progress[10] = 0;
-	memset(progress, ' ', 10);
+//	progress[10] = 0;
+//	memset(progress, ' ', 10);
 	/*
 	 *	Here we are looking for the root of our binary tree
 	 */
@@ -143,18 +161,23 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	decal = *(char*)(mmaped_file + size - 1);
 	nb_byte_writed = 0;
 	c = *(char*)(mmaped_file + i);
-	offset = 1;
-	printf("\tDecompressing bytes: [%s] %d/%d\r", progress, nb_byte_writed, final_size);
-	fflush(stdout);
-	pourcent = (int)((long)((long)final_size * (long)(offset * 10)) / 100);
+	pthread_mutex_lock(&mutex);
+	options.actual.size = &final_size;
+	options.actual.i = &nb_byte_writed;
+	options.compress_datas = 1;
+	pthread_mutex_unlock(&mutex);
+//	offset = 1;
+//	printf("\tDecompressing bytes: [%s] %d/%d\r", progress, nb_byte_writed, final_size);
+//	fflush(stdout);
+//	pourcent = (int)((long)((long)final_size * (long)(offset * 10)) / 100);
 	while (i >= 4 && nb_byte_writed < final_size) {
-		if (nb_byte_writed > pourcent) {
-			progress[offset - 1] = '=';
-			printf("\tDecompressing bytes: [%s] %d/%d\r", progress, nb_byte_writed, final_size);
-			fflush(stdout);
-			offset++;
-			pourcent = (int)((long)((long)final_size * (long)(offset * 10)) / 100);
-		}
+//		if (nb_byte_writed > pourcent) {
+//			progress[offset - 1] = '=';
+//			printf("\tDecompressing bytes: [%s] %d/%d\r", progress, nb_byte_writed, final_size);
+//			fflush(stdout);
+//			offset++;
+//			pourcent = (int)((long)((long)final_size * (long)(offset * 10)) / 100);
+//		}
 		tmp_tree = bin_tree;
 		next = 1;
 		while (next) {
@@ -176,13 +199,20 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 			}
 		}
 	}
-	progress[offset - 1] = '=';
-	printf("\tDecompressing bytes: [%s] %d/%d\n", progress, nb_byte_writed, final_size);
-	fflush(stdout);
-	printf("\tWriting decompressed datas on file: ..\r");
-	fflush(stdout);
+	pthread_mutex_lock(&mutex);
+	options.compress_datas = 2;
+	options.write_datas = 1;
+	pthread_mutex_unlock(&mutex);
+//	progress[offset - 1] = '=';
+//	printf("\tDecompressing bytes: [%s] %d/%d\n", progress, nb_byte_writed, final_size);
+//	fflush(stdout);
+//	printf("\tWriting decompressed datas on file: ..\r");
+//	fflush(stdout);
 	write(fd, mmap_start, final_size);
 	munmap(mmap_start, final_size);
-	printf("\tWriting decompressed datas on file: ok\n");
+	pthread_mutex_lock(&mutex);
+	options.write_datas = 2;
+	pthread_mutex_unlock(&mutex);
+//	printf("\tWriting decompressed datas on file: ok\n");
 	return ;
 }

@@ -3,12 +3,13 @@ CC			=	clang
 CFLAGS		=	-Wall -Wextra -Werror -Ofast
 SRC			=	main.c \
 				binary_tree_functions.c \
-				unpack.c
+				unpack.c \
+				thread_print.c
 OBJ			=	$(SRC:.c=.o)
 
 $(EXEC): $(OBJ)
 	$(info Compiling $(EXEC))
-	@$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^ -I.
 
 all: $(EXEC)
 
