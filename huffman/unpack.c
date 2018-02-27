@@ -15,6 +15,7 @@ void 	*recover_binary_tree(void *base) {
 //	int pourcent;
 	short nb_branchs;
 	int total;
+	pthread_t thread;
 
     sizeof_t_binary_tree = sizeof(t_binary_tree);
     binary_tree_addr = mmap(0, (sizeof_t_binary_tree * 256) * 2, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);//malloc((sizeof_t_binary_tree * buff_size) * 2);
@@ -23,10 +24,12 @@ void 	*recover_binary_tree(void *base) {
     i = 0;
 	total = 256;
     addr_offset = 0;
-	pthread_mutex_lock(&mutex);
 	options.actual.size = &total;
 	options.actual.i = &i;
 	options.base_sheet = 1;
+	pthread_create(&thread, NULL, thread_print, (void*)&options);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&start, &mutex);
 	pthread_mutex_unlock(&mutex);
 //	offset = 1;
 //	progress[10] = 0;
@@ -58,14 +61,17 @@ void 	*recover_binary_tree(void *base) {
 	pthread_mutex_lock(&mutex);
 	options.base_sheet = 2;
 	pthread_mutex_unlock(&mutex);
+	pthread_join(thread, NULL);
 //	progress[offset - 1] = '=';
 //	printf("\tCreating base sheet: [%s]\n", progress);
 //	fflush(stdout);
 	tmp_branch = (t_binary_tree*)(binary_tree_addr);
-	pthread_mutex_lock(&mutex);
 	options.actual.size = &max_value;
 	options.actual.i = &(tmp_branch->value);
 	options.branchs = 1;
+	pthread_create(&thread, NULL, thread_print, (void*)&options);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&start, &mutex);
 	pthread_mutex_unlock(&mutex);
 //	memset(progress, ' ', 10);
 //	printf("\tCreating branchs: [%s]\r", progress);
@@ -118,6 +124,7 @@ void 	*recover_binary_tree(void *base) {
 	pthread_mutex_lock(&mutex);
 	options.branchs = 2;
 	pthread_mutex_unlock(&mutex);
+	pthread_join(thread, NULL);
 //	memset(progress, '=', 10);
 //	progress[offset - 1] = '=';
 //	printf("\tCreating branchs: [%s]\n", progress);
@@ -140,6 +147,7 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 //	int pourcent;
 	char *mmap_tmp;
 	void *mmap_start;
+	pthread_t thread;
 
 	final_size = *(int*)mmaped_file;
 	mmap_tmp = mmap(0, final_size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
@@ -161,12 +169,13 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	decal = *(char*)(mmaped_file + size - 1);
 	nb_byte_writed = 0;
 	c = *(char*)(mmaped_file + i);
-	pthread_mutex_lock(&mutex);
 	options.actual.size = &final_size;
 	options.actual.i = &nb_byte_writed;
 	options.compress_datas = 1;
+	pthread_create(&thread, NULL, thread_print, (void*)&options);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&start, &mutex);
 	pthread_mutex_unlock(&mutex);
-//	offset = 1;
 //	printf("\tDecompressing bytes: [%s] %d/%d\r", progress, nb_byte_writed, final_size);
 //	fflush(stdout);
 //	pourcent = (int)((long)((long)final_size * (long)(offset * 10)) / 100);
@@ -201,7 +210,13 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	}
 	pthread_mutex_lock(&mutex);
 	options.compress_datas = 2;
+	pthread_mutex_unlock(&mutex);
+	pthread_join(thread, NULL);
+
 	options.write_datas = 1;
+	pthread_create(&thread, NULL, thread_print, (void*)&options);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&start, &mutex);
 	pthread_mutex_unlock(&mutex);
 //	progress[offset - 1] = '=';
 //	printf("\tDecompressing bytes: [%s] %d/%d\n", progress, nb_byte_writed, final_size);
@@ -213,6 +228,10 @@ void decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd) {
 	pthread_mutex_lock(&mutex);
 	options.write_datas = 2;
 	pthread_mutex_unlock(&mutex);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_signal(&ret);
+	pthread_mutex_unlock(&mutex);
+	pthread_join(thread, NULL);
 //	printf("\tWriting decompressed datas on file: ok\n");
 	return ;
 }

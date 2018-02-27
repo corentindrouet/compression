@@ -36,18 +36,21 @@ typedef struct 				s_thread_options {
 	t_pourcent_datas 		actual;
 } 							t_thread_options;
 
-
+pthread_cond_t ret;
+pthread_cond_t start;
+pthread_cond_t end;
 t_thread_options options;
 pthread_mutex_t mutex;// = PTHREAD_MUTEX_INITIALIZER;
 
-void    create_element_at_addr(int value, unsigned char character, t_binary_tree *sheet, t_binary_tree *left, t_binary_tree *right);
-void    *convert_buff_to_binary_tree(int *buff, int *index, int buff_size);
-void    write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int fd);
-int     file_size(int fd);
-void    tri(int *tab, int tab_size, int *index);
-void 	decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd);
-void 	write_tree_base_on_file(t_binary_tree *tree, int fd);
-void 	*recover_binary_tree(void *base);
+void	create_element_at_addr(int value, unsigned char character, t_binary_tree *sheet, t_binary_tree *left, t_binary_tree *right);
+void	*convert_buff_to_binary_tree(int *buff, int *index, int buff_size);
+void	write_compressed_datas_on_fd(void *tree, void *mmap_addr, int size, int fd);
+int		file_size(int fd);
+void	tri(int *tab, int tab_size, int *index);
+void	decrypt(t_binary_tree *bin_tree, void *mmaped_file, int size, int fd);
+void	write_tree_base_on_file(t_binary_tree *tree, int fd);
+void	*recover_binary_tree(void *base);
 void	*thread_print(void *arg);
+char	get_opts_value(int index);
 
 #endif

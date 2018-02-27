@@ -48,6 +48,9 @@ void *create_binary_tree(char *mmap_addr, int size) {
     int index[256];
     int buff[256];
 	int i;
+	pthread_t thread;
+	void *mmap_tmp;
+	void *mmap_max;
 //	char progress[11];
 //	int offset;
 //	int pourcent;
@@ -62,25 +65,24 @@ void *create_binary_tree(char *mmap_addr, int size) {
 //	fflush(stdout);
 //	offset = 1;
 //	pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
-	pthread_mutex_lock(&mutex);
 	options.actual.size = &size;
 	options.actual.i = &i;
 	options.recurrence = 1;
+	pthread_create(&thread, NULL, thread_print, (void*)&options);
+	pthread_mutex_lock(&mutex);
+	pthread_cond_wait(&start, &mutex);
 	pthread_mutex_unlock(&mutex);
-    while (i < size) {
-/*		if (pourcent < i) {
-			progress[offset - 1] = '=';
-			printf("\tCounting Bytes recurrence: [%s] %d/%d\r", progress, i, size);
-			fflush(stdout);
-			offset++;
-			pourcent = (int)((long)((long)size * (long)(offset * 10)) / 100);
-		}*/
-        buff[(unsigned char)mmap_addr[i]]++;
-        i++;
+	mmap_tmp = mmap_addr;
+	mmap_max = mmap_addr + size;
+    while (mmap_tmp < mmap_max) {
+		buff[*(unsigned char*)mmap_tmp]++;
+		mmap_tmp++;
 	}
 	pthread_mutex_lock(&mutex);
 	options.recurrence = 2;
 	pthread_mutex_unlock(&mutex);
+	pthread_join(thread, NULL);
+//	pthread_cond_signal(&end);
 //	progress[offset - 1] = '=';
 //	printf("\tCounting Bytes recurrence: [%s] %d/%d\n", progress, i, size);
 //	fflush(stdout);
@@ -180,6 +182,9 @@ void unpack(char *file_name, char *compressed_file, char *new_file) {
 
 void init_opts(int p_o_up) {
 	pthread_mutex_init(&mutex, NULL);
+	pthread_cond_init(&start, NULL);
+	pthread_cond_init(&end, NULL);
+	pthread_cond_init(&ret, NULL);
 	options.pack_or_unpack = p_o_up;
 	options.recurrence = 0;
 	options.base_sheet = 0;
@@ -191,22 +196,26 @@ void init_opts(int p_o_up) {
 }
 
 int main(int argc, char **argv) {
-	pthread_t thread;
 
     if (argc == 4) {
 		if (!strcmp(argv[1], "pack")) {
 			init_opts(1);
-//			printf("%p\n", &(options.recurrence));
-			pthread_create(&thread, NULL, thread_print, (void*)&options);
+//			pthread_create(&thread, NULL, thread_print, (void*)&options);
+//			pthread_mutex_lock(&mutex);
+//			pthread_cond_wait(&end, &mutex);
+//			pthread_mutex_unlock(&mutex);
 			pack(argv[2], argv[3]);
-			pthread_join(thread, NULL);
+//			pthread_join(thread, NULL);
 			return (0);
 		}
 		else if (!strcmp(argv[1], "unpack")) {
 			init_opts(0);
-			pthread_create(&thread, NULL, thread_print, (void*)&options);
+//			pthread_create(&thread, NULL, thread_print, (void*)&options);
+//			pthread_mutex_lock(&mutex);
+///			pthread_cond_wait(&end, &mutex);
+//			pthread_mutex_unlock(&mutex);
 			unpack(argv[2], argv[2], argv[3]);
-			pthread_join(thread, NULL);
+//			pthread_join(thread, NULL);
 			return (0);
 		}
 	}
